@@ -1,0 +1,44 @@
+{
+  "timeline": {
+    "soundtrack": {
+      "src": "https://shotstack-assets.s3.ap-southeast-2.amazonaws.com/music/epicmotivational.mp3",
+      "effect": "fadeOut"
+    },
+    "background": "#0A1128",
+    "tracks": [
+      {
+        "clips": [
+          {
+            "asset": {
+              "type": "title",
+              "text": "🏆 PS EMPIRE STUDIO SPORTS 🏆\n\n😂 MATCH REVIEW 😂\n\n{{script}}",
+              "style": "minimal",
+              "position": "center",
+              "size": "medium",
+              "background": "rgba(0,0,0,0.7)"
+            },
+            "start": 0,
+            "length": 50
+          }
+        ]
+      },
+      {
+        "clips": [
+          {
+            "asset": {
+              "type": "audio",
+              "src": "https://shotstack-assets.s3.ap-southeast-2.amazonaws.com/audio/tts/tts.mp3?text={{encodedScript}}&voice=Matthew&language=en-US"
+            },
+            "start": 0,
+            "length": 50
+          }
+        ]
+      }
+    ]
+  },
+  "output": {
+    "format": "mp4",
+    "resolution": "sd",
+    "aspectRatio": "9:16"
+  }
+}
