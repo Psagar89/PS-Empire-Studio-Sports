@@ -1,0 +1,211 @@
+{
+  "name": "PS Empire – Funny Moment of the Day",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": { "interval": [{ "field": "days", "daysInterval": 1 }] },
+        "triggerTimes": { "hour": 13, "minute": 0 }
+      },
+      "id": "schedule-funny",
+      "name": "Daily 13:00 UTC",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "= 'https://newsapi.org/v2/everything?q=FIFA+World+Cup+funny+moment&from=' + new Date().toISOString().split('T')[0] + '&sortBy=popularity&language=en&apiKey=' + $vars.NEWSAPI_KEY"
+      },
+      "id": "fetch-funny",
+      "name": "Fetch Funny News",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [400, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "= 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + $vars.GEMINI_KEY",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [{
+            "name": "contents",
+            "value": "[{\"parts\":[{\"text\":\"You are the scriptwriter for PS Empire Studio Sports, a viral football meme channel. Pick the funniest moment from these FIFA World Cup news: {{ JSON.stringify($node['Fetch Funny News'].json.articles.slice(0,5).map(a => a.title + ' - ' + a.description)) }}. Write a 25‑second script in meme style. Start with 'PS Empire Studio Sports presents...' and end with 'Empire out!' Use emojis, slang (bro, no way, 💀), and a solid punchline. Only spoken script, no stage directions.\"}]}]"
+          }]
+        }
+      },
+      "id": "ai-funny",
+      "name": "AI Script – Funny Moment",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [600, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.shotstack.io/edit/stage/render",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "x-api-key", "value": "={{ $vars.SHOTSTACK_KEY }}" }]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [{
+            "name": "data",
+            "value": "{\n  \"timeline\": {\n    \"soundtrack\": {\n      \"src\": \"https://shotstack-assets.s3.ap-southeast-2.amazonaws.com/music/funnymusic.mp3\",\n      \"effect\": \"fadeOut\"\n    },\n    \"background\": \"#0A1128\",\n    \"tracks\": [\n      {\n        \"clips\": [{\n          \"asset\": { \"type\": \"title\", \"text\": \"🏆 PS EMPIRE STUDIO SPORTS 🏆\\n\\n🤣 FUNNY MOMENT 🤣\\n\\n{{ $node['AI Script – Funny Moment'].json.candidates[0].content.parts[0].text }}\", \"style\": \"minimal\", \"position\": \"center\", \"size\": \"medium\", \"background\": \"rgba(0,0,0,0.7)\" },\n          \"start\": 0,\n          \"length\": 30\n        }]\n      },\n      {\n        \"clips\": [{\n          \"asset\": { \"type\": \"audio\", \"src\": \"https://shotstack-assets.s3.ap-southeast-2.amazonaws.com/audio/tts/tts.mp3?text={{ encodeURIComponent($node['AI Script – Funny Moment'].json.candidates[0].content.parts[0].text) }}&voice=Matthew&language=en-US\" },\n          \"start\": 0,\n          \"length\": 30\n        }]\n      }\n    ]\n  },\n  \"output\": { \"format\": \"mp4\", \"resolution\": \"sd\", \"aspectRatio\": \"9:16\" }\n}"
+          }]
+        }
+      },
+      "id": "shotstack-funny",
+      "name": "Render Video",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [800, 300]
+    },
+    {
+      "parameters": { "waitTime": 5 },
+      "id": "wait",
+      "name": "Wait 5 min",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [1000, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "= 'https://api.shotstack.io/edit/stage/render/' + $node['Render Video'].json.id",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "x-api-key", "value": "={{ $vars.SHOTSTACK_KEY }}" }]
+        }
+      },
+      "id": "check-status",
+      "name": "Check Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1200, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [{
+            "value1": "={{ $node['Check Status'].json.response.status }}",
+            "operation": "equals",
+            "value2": "done"
+          }]
+        }
+      },
+      "id": "if-done",
+      "name": "If Done",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1400, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $node['Check Status'].json.response.url }}",
+        "options": { "response": { "response": { "responseFormat": "file" } } }
+      },
+      "id": "download",
+      "name": "Download Video",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1600, 300]
+    },
+    {
+      "parameters": {
+        "resource": "youtube",
+        "operation": "upload",
+        "title": "= '🤣 Funny Moment – ' + new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) + ' | PS Empire Studio Sports #Shorts'",
+        "description": "PS Empire Studio Sports brings you the funniest FIFA World Cup moments daily! #FIFAWorldCup #FootballMemes #PSEmpireStudioSports",
+        "categoryId": "22",
+        "privacyStatus": "public",
+        "videoFile": "={{ $node['Download Video'].json.file }}"
+      },
+      "id": "youtube",
+      "name": "Upload to YouTube",
+      "type": "n8n-nodes-base.youtube",
+      "typeVersion": 1,
+      "position": [1800, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "= 'https://graph.facebook.com/v18.0/' + $vars.IG_USER_ID + '/media'",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "video_url", "value": "={{ $node['Check Status'].json.response.url }}" },
+            { "name": "media_type", "value": "REELS" },
+            { "name": "caption", "value": "= '🏆 PS Empire Studio Sports – Funny Moment! ' + new Date().toLocaleDateString('en-US', { weekday: 'long' }) + ' 👑 #FIFAWorldCup #PSEmpireStudioSports'" },
+            { "name": "access_token", "value": "={{ $vars.IG_ACCESS_TOKEN }}" }
+          ]
+        }
+      },
+      "id": "ig-create",
+      "name": "IG Reel",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [2000, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "= 'https://graph.facebook.com/v18.0/' + $vars.IG_USER_ID + '/media_publish'",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "creation_id", "value": "={{ $node['IG Reel'].json.id }}" },
+            { "name": "access_token", "value": "={{ $vars.IG_ACCESS_TOKEN }}" }
+          ]
+        }
+      },
+      "id": "ig-publish",
+      "name": "Publish IG Reel",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [2200, 300]
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "operation": "upload",
+        "name": "= 'PSEmpire_FunnyMoment_' + new Date().toISOString().split('T')[0] + '.mp4'",
+        "folder": { "id": "={{ $vars.GOOGLE_DRIVE_FOLDER_ID }}" },
+        "binaryData": true,
+        "fileContent": "={{ $node['Download Video'].json.file }}"
+      },
+      "id": "drive-backup",
+      "name": "Save to Google Drive",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 1,
+      "position": [1800, 500]
+    }
+  ],
+  "connections": {
+    "Daily 13:00 UTC": { "main": [[ { "node": "Fetch Funny News", "type": "main", "index": 0 } ]] },
+    "Fetch Funny News": { "main": [[ { "node": "AI Script – Funny Moment", "type": "main", "index": 0 } ]] },
+    "AI Script – Funny Moment": { "main": [[ { "node": "Render Video", "type": "main", "index": 0 } ]] },
+    "Render Video": { "main": [[ { "node": "Wait 5 min", "type": "main", "index": 0 } ]] },
+    "Wait 5 min": { "main": [[ { "node": "Check Status", "type": "main", "index": 0 } ]] },
+    "Check Status": { "main": [[ { "node": "If Done", "type": "main", "index": 0 } ]] },
+    "If Done": {
+      "main": [
+        [{ "node": "Download Video", "type": "main", "index": 0 }],
+        [{ "node": "Wait 5 min", "type": "main", "index": 1 }]
+      ]
+    },
+    "Download Video": {
+      "main": [
+        [{ "node": "Upload to YouTube", "type": "main", "index": 0 }],
+        [{ "node": "Save to Google Drive", "type": "main", "index": 1 }]
+      ]
+    },
+    "Upload to YouTube": { "main": [[ { "node": "IG Reel", "type": "main", "index": 0 } ]] },
+    "IG Reel": { "main": [[ { "node": "Publish IG Reel", "type": "main", "index": 0 } ]] }
+  }
+}
